@@ -10,23 +10,22 @@ import { CountSuccessesInputs } from './inputs/CountSuccessesInputs'
 import { KeepAndSumInputs } from './inputs/KeepAndSumInputs'
 import { StraightSumInputs } from './inputs/StraightSumInputs'
 import { ResultDisplay } from './ResultDisplay'
-import { RollTypeSelector } from './RollTypeSelector'
 
 interface Props {
   buildIndex: number
 }
 
 export function BuildCard({ buildIndex }: Props) {
-  const rollType = useSessionStore((s) => s.builds[buildIndex].rollType)
+  const rollType = useSessionStore((s) => s.rollType)
   const totalBuilds = useSessionStore((s) => s.builds.length)
   const duplicateBuild = useSessionStore((s) => s.duplicateBuild)
   const removeBuild = useSessionStore((s) => s.removeBuild)
   const setResult = useSessionStore((s) => s.setResult)
   const setIsComputing = useSessionStore((s) => s.setIsComputing)
 
-  // Stable string key: recompute only when active params change
+  // Stable string key: recompute only when active params or roll type change
   const paramsKey = useSessionStore((s) =>
-    JSON.stringify(selectBuildParams(s.builds[buildIndex])),
+    JSON.stringify(selectBuildParams(s.builds[buildIndex], s.rollType)),
   )
 
   // Debounced compute wired to M1 cache
@@ -74,12 +73,6 @@ export function BuildCard({ buildIndex }: Props) {
             </button>
           )}
         </div>
-      </div>
-
-      {/* Roll type */}
-      <div className="px-5 pt-4 pb-4 border-b border-slate-800">
-        <p className="text-xs text-slate-500 uppercase tracking-widest mb-3">Roll type</p>
-        <RollTypeSelector buildIndex={buildIndex} />
       </div>
 
       {/* Parameters */}

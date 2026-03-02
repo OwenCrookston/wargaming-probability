@@ -9,9 +9,10 @@ import type {
 
 // ─── Build shape ──────────────────────────────────────────────────────────────
 // Each build persists params per roll type so switching roll type doesn't reset.
+// rollType is intentionally NOT here — it lives at the session level so all
+// builds share the same roll type.
 
 export interface Build {
-  rollType: RollParams['rollType']
   countSuccesses: CountSuccessesParams
   keepAndSum: KeepAndSumParams
   straightSum: StraightSumParams
@@ -52,7 +53,6 @@ const defaultStraightSum: StraightSumParams = {
 
 export function makeBuild(): Build {
   return {
-    rollType: 'countSuccesses',
     countSuccesses: { ...defaultCountSuccesses },
     keepAndSum: { ...defaultKeepAndSum },
     straightSum: { ...defaultStraightSum },
@@ -70,8 +70,13 @@ function updateAt<T>(arr: T[], index: number, updater: (item: T) => T): T[] {
 // ─── Store shape ──────────────────────────────────────────────────────────────
 
 interface SessionStore {
+  /** Shared across all builds — changing it affects every build simultaneously. */
+  rollType: RollParams['rollType']
   builds: Build[]
   activeBuildIndex: number
+
+  // Roll type — session-level
+  setRollType: (type: RollParams['rollType']) => void
 
   // Build management
   addBuild: () => void
@@ -80,7 +85,6 @@ interface SessionStore {
   setActiveBuildIndex: (index: number) => void
 
   // Per-build updates
-  setRollType: (index: number, type: RollParams['rollType']) => void
   patchCountSuccesses: (index: number, patch: Partial<Omit<CountSuccessesParams, 'rollType'>>) => void
   patchKeepAndSum: (index: number, patch: Partial<Omit<KeepAndSumParams, 'rollType'>>) => void
   patchStraightSum: (index: number, patch: Partial<Omit<StraightSumParams, 'rollType'>>) => void
@@ -91,8 +95,11 @@ interface SessionStore {
 // ─── Store ───────────────────────────────────────────────────────────────────
 
 export const useSessionStore = create<SessionStore>((set) => ({
+  rollType: 'countSuccesses',
   builds: [makeBuild()],
   activeBuildIndex: 0,
+
+  setRollType: (type) => set({ rollType: type }),
 
   addBuild: () =>
     set((state) => {
@@ -118,7 +125,6 @@ export const useSessionStore = create<SessionStore>((set) => ({
       if (state.builds.length >= 3) return state
       const src = state.builds[index]
       const copy: Build = {
-        ...src,
         countSuccesses: { ...src.countSuccesses },
         keepAndSum: { ...src.keepAndSum },
         straightSum: { ...src.straightSum },
@@ -134,11 +140,6 @@ export const useSessionStore = create<SessionStore>((set) => ({
     }),
 
   setActiveBuildIndex: (index) => set({ activeBuildIndex: index }),
-
-  setRollType: (index, type) =>
-    set((state) => ({
-      builds: updateAt(state.builds, index, (b) => ({ ...b, rollType: type })),
-    })),
 
   patchCountSuccesses: (index, patch) =>
     set((state) => ({
@@ -180,8 +181,9 @@ export const useSessionStore = create<SessionStore>((set) => ({
 
 // ─── Selectors / pure helpers ─────────────────────────────────────────────────
 
-export function selectBuildParams(build: Build): RollParams {
-  switch (build.rollType) {
+/** Extract the active RollParams from a build, using the session-level rollType. */
+export function selectBuildParams(build: Build, rollType: RollParams['rollType']): RollParams {
+  switch (rollType) {
     case 'countSuccesses':
       return build.countSuccesses
     case 'keepAndSum':

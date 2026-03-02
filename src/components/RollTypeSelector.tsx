@@ -9,12 +9,9 @@ const ROLL_TYPES: { value: RollType; label: string; sub: string }[] = [
   { value: 'straightSum', label: 'Straight Sum', sub: 'Roll N dice, sum all' },
 ]
 
-interface Props {
-  buildIndex: number
-}
-
-export function RollTypeSelector({ buildIndex }: Props) {
-  const rollType = useSessionStore((s) => s.builds[buildIndex].rollType)
+/** Session-level roll type selector — shared across all builds. No buildIndex prop. */
+export function RollTypeSelector() {
+  const rollType = useSessionStore((s) => s.rollType)
   const setRollType = useSessionStore((s) => s.setRollType)
 
   return (
@@ -25,7 +22,7 @@ export function RollTypeSelector({ buildIndex }: Props) {
           <button
             key={rt.value}
             type="button"
-            onClick={() => setRollType(buildIndex, rt.value)}
+            onClick={() => setRollType(rt.value)}
             className={
               'flex-1 text-left px-4 py-3 rounded-xl border transition-colors ' +
               (active

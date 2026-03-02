@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useSwipeable } from 'react-swipeable'
 import { BuildCard } from './components/BuildCard'
 import { ComparisonBar } from './components/ComparisonBar'
+import { RollTypeSelector } from './components/RollTypeSelector'
 import { useSessionStore } from './store/useSessionStore'
 
 // ─── Responsive hook ──────────────────────────────────────────────────────────
@@ -65,6 +66,12 @@ export default function App() {
 
       {/* ── Main ───────────────────────────────────────────────────────── */}
       <main className="max-w-7xl mx-auto px-4 py-6">
+
+        {/* ── Shared roll type selector ─────────────────────────────────── */}
+        <div className="mb-6">
+          <p className="text-xs text-slate-500 uppercase tracking-widest mb-3">Roll type</p>
+          <RollTypeSelector />
+        </div>
 
         {isMobile ? (
           /* ── Mobile: swipeable carousel ─────────────────────────────── */
