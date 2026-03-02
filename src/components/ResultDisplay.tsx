@@ -1,5 +1,29 @@
 import { computeDeltas, useSessionStore } from '../store/useSessionStore'
 
+// ─── Color helpers ─────────────────────────────────────────────────────────────
+
+function lerp(a: number, b: number, t: number) {
+  return a + (b - a) * t
+}
+
+/**
+ * Maps a success percent (0–100) to an HSL color string:
+ *   0%  → reddish   hsl(0,   90%, 65%)
+ *  75%  → yellowish hsl(45,  95%, 60%)
+ * 100%  → greenish  hsl(145, 70%, 55%)
+ */
+function percentToColor(pct: number): string {
+  const p = Math.max(0, Math.min(100, pct))
+  if (p <= 75) {
+    const t = p / 75
+    return `hsl(${lerp(0, 45, t).toFixed(1)}, ${lerp(90, 95, t).toFixed(1)}%, ${lerp(65, 60, t).toFixed(1)}%)`
+  }
+  const t = (p - 75) / 25
+  return `hsl(${lerp(45, 145, t).toFixed(1)}, ${lerp(95, 70, t).toFixed(1)}%, ${lerp(60, 55, t).toFixed(1)}%)`
+}
+
+// ─── Component ─────────────────────────────────────────────────────────────────
+
 interface Props {
   buildIndex: number
 }
@@ -21,18 +45,29 @@ export function ResultDisplay({ buildIndex }: Props) {
 
   const showPercentSign = !isComputing && result !== null
 
+  // Computed color when we have a real result; undefined → fall back to muted slate.
+  const accentColor = result !== null ? percentToColor(result.successPercent) : undefined
+
   return (
     <div className="flex flex-col items-center gap-3 py-6">
       {/* Primary percent — fixed layout, no conditional mounts */}
       <div className="relative">
         <p className="text-8xl font-black tracking-tight">
-          <span className="text-amber-400">{displayPercent}</span>
-          {/* Always rendered; invisible when there's no result — keeps width stable */}
+          {/* Digit span: gradient color when result present, muted when computing/empty */}
+          <span
+            className={accentColor ? '' : 'text-slate-500'}
+            style={accentColor ? { color: accentColor } : undefined}
+          >
+            {displayPercent}
+          </span>
+          {/* % sign: always rendered for stable layout; same accent color at 70% opacity */}
           <span
             className={
-              'text-4xl font-bold text-amber-400/70 ' +
-              (showPercentSign ? 'visible' : 'invisible')
+              'text-4xl font-bold ' +
+              (showPercentSign ? 'visible' : 'invisible') +
+              (accentColor ? '' : ' text-slate-500')
             }
+            style={accentColor ? { color: accentColor, opacity: 0.7 } : undefined}
           >
             %
           </span>

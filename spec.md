@@ -189,3 +189,18 @@ Comparison layer
 - Mobile swipe layout (react-swipeable)
 - Fixed comparison summary bar on mobile
 - Duplicate build functionality
+
+### Milestone 4 — Performance & Sharing
+- Web Worker for simulation: move Monte Carlo off the main thread using Vite's `?worker` syntax so the UI stays fully responsive during computation
+- URL state sharing: encode the full session (roll type + all build params) in the URL hash; add a "Copy link" button to the header so comparisons can be bookmarked or sent to others
+
+### Milestone 5 — Richer Math
+- Probability distribution histogram: surface the full outcome distribution (P(exactly K successes)) as a bar chart below each result card
+- Exploding dice: roll again on max face value, accumulating additional results (e.g. Warhammer Mortal Wounds on a 6)
+
+### Milestone 6 — Sequential Rolls & Persistence
+- Sequential roll chains: model multi-stage combat rolls (e.g. to-hit → to-wound → armor save) where each stage feeds into the next; very common in miniatures wargames
+- Named builds + localStorage: let users name builds ("Plasma Gun", "Bolter") and save/recall them across sessions without a backend
+
+### Milestone 7 — Export
+- Export as image: generate a shareable screenshot-style card of the current comparison so results can be dropped into Discord, forums, or group chats
