@@ -1,6 +1,6 @@
-import { useEffect } from 'react'
-import { getOrSimulate } from '../math/cache'
+import { useEffect, useRef } from 'react'
 import type { RollParams } from '../math/types'
+import type { SimulationResult } from '../math/types'
 import {
   BUILD_LABELS,
   selectBuildParams,
@@ -10,6 +10,15 @@ import { CountSuccessesInputs } from './inputs/CountSuccessesInputs'
 import { KeepAndSumInputs } from './inputs/KeepAndSumInputs'
 import { StraightSumInputs } from './inputs/StraightSumInputs'
 import { ResultDisplay } from './ResultDisplay'
+
+// ─── Worker response type ─────────────────────────────────────────────────────
+
+interface WorkerResponse {
+  id: number
+  result: SimulationResult
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 interface Props {
   buildIndex: number
@@ -28,15 +37,47 @@ export function BuildCard({ buildIndex }: Props) {
     JSON.stringify(selectBuildParams(s.builds[buildIndex], s.rollType)),
   )
 
-  // Debounced compute wired to M1 cache
+  // ── Effect 1: worker lifecycle ──────────────────────────────────────────────
+  // One worker per BuildCard (max 3). Created on mount, terminated on unmount.
+  // The worker's cache is independent per instance, which is fine.
+
+  const workerRef = useRef<Worker | null>(null)
+
   useEffect(() => {
+    workerRef.current = new Worker(
+      new URL('../math/simulation.worker.ts', import.meta.url),
+      { type: 'module' },
+    )
+    return () => {
+      workerRef.current?.terminate()
+      workerRef.current = null
+    }
+  }, [])
+
+  // ── Effect 2: simulation trigger ────────────────────────────────────────────
+  // Debounce 250ms then post to worker. requestIdRef invalidates stale responses.
+
+  const requestIdRef = useRef(0)
+
+  useEffect(() => {
+    const worker = workerRef.current
+    if (!worker) return
+
     setIsComputing(buildIndex, true)
     const params = JSON.parse(paramsKey) as RollParams
+
     const timer = setTimeout(() => {
-      const result = getOrSimulate(params)
-      setResult(buildIndex, result)
-      setIsComputing(buildIndex, false)
+      const id = ++requestIdRef.current
+
+      worker.onmessage = (e: MessageEvent<WorkerResponse>) => {
+        if (e.data.id !== requestIdRef.current) return // stale response — discard
+        setResult(buildIndex, e.data.result)
+        setIsComputing(buildIndex, false)
+      }
+
+      worker.postMessage({ id, params })
     }, 250)
+
     return () => clearTimeout(timer)
   }, [paramsKey, buildIndex, setResult, setIsComputing])
 

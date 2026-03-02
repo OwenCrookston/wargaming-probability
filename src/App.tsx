@@ -4,6 +4,7 @@ import { BuildCard } from './components/BuildCard'
 import { ComparisonBar } from './components/ComparisonBar'
 import { RollTypeSelector } from './components/RollTypeSelector'
 import { useSessionStore } from './store/useSessionStore'
+import { decodeSession, encodeSession, snapshotFromStore } from './utils/urlState'
 
 // ─── Responsive hook ──────────────────────────────────────────────────────────
 
@@ -24,11 +25,32 @@ export default function App() {
   const activeBuildIndex = useSessionStore((s) => s.activeBuildIndex)
   const addBuild = useSessionStore((s) => s.addBuild)
   const setActiveBuildIndex = useSessionStore((s) => s.setActiveBuildIndex)
+  const loadSession = useSessionStore((s) => s.loadSession)
 
   const isMobile = useIsMobile()
   const canAdd = builds.length < 3
 
-  // Swipe handlers — only active on mobile, harmless on desktop
+  // ── URL hydration on mount ─────────────────────────────────────────────────
+  useEffect(() => {
+    const snapshot = decodeSession()
+    if (snapshot) loadSession(snapshot)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // intentionally run once on mount only
+
+  // ── Copy link ─────────────────────────────────────────────────────────────
+  const [copied, setCopied] = useState(false)
+
+  function handleCopyLink() {
+    const snapshot = snapshotFromStore(useSessionStore.getState())
+    window.location.hash = encodeSession(snapshot)
+    navigator.clipboard.writeText(window.location.href).catch(() => {
+      // Clipboard API may fail in non-secure contexts — the hash is still set.
+    })
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  // ── Swipe handlers ────────────────────────────────────────────────────────
   const swipeHandlers = useSwipeable({
     onSwipedLeft: () => setActiveBuildIndex(Math.min(activeBuildIndex + 1, builds.length - 1)),
     onSwipedRight: () => setActiveBuildIndex(Math.max(activeBuildIndex - 1, 0)),
@@ -38,7 +60,6 @@ export default function App() {
   })
 
   return (
-    // pb-20 leaves room for the fixed comparison bar on mobile
     <div className={'min-h-screen bg-slate-950 text-slate-100 ' + (isMobile && builds.length > 1 ? 'pb-20' : '')}>
 
       {/* ── Header ─────────────────────────────────────────────────────── */}
@@ -51,16 +72,33 @@ export default function App() {
             <p className="text-xs text-slate-600 mt-0.5">Tactical dice calculator</p>
           </div>
 
-          {/* Add build — desktop only */}
-          {!isMobile && canAdd && (
+          {/* Right side controls */}
+          <div className="flex items-center gap-2">
+            {/* Copy link — always visible */}
             <button
               type="button"
-              onClick={addBuild}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-500 transition-colors text-sm"
+              onClick={handleCopyLink}
+              className={
+                'flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm transition-colors ' +
+                (copied
+                  ? 'border-green-700 text-green-400 bg-green-950/40'
+                  : 'border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-500')
+              }
             >
-              + Add build
+              {copied ? '✓ Copied' : 'Copy link'}
             </button>
-          )}
+
+            {/* Add build — desktop only */}
+            {!isMobile && canAdd && (
+              <button
+                type="button"
+                onClick={addBuild}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-500 transition-colors text-sm"
+              >
+                + Add build
+              </button>
+            )}
+          </div>
         </div>
       </header>
 

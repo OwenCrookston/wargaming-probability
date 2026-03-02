@@ -6,6 +6,7 @@ import type {
   SimulationResult,
   StraightSumParams,
 } from '../math/types'
+import type { SessionSnapshot } from '../utils/urlState'
 
 // ─── Build shape ──────────────────────────────────────────────────────────────
 // Each build persists params per roll type so switching roll type doesn't reset.
@@ -90,6 +91,9 @@ interface SessionStore {
   patchStraightSum: (index: number, patch: Partial<Omit<StraightSumParams, 'rollType'>>) => void
   setResult: (index: number, result: SimulationResult | null) => void
   setIsComputing: (index: number, value: boolean) => void
+
+  // Session restore — used by URL state hydration
+  loadSession: (snapshot: SessionSnapshot) => void
 }
 
 // ─── Store ───────────────────────────────────────────────────────────────────
@@ -177,6 +181,19 @@ export const useSessionStore = create<SessionStore>((set) => ({
     set((state) => ({
       builds: updateAt(state.builds, index, (b) => ({ ...b, isComputing: value })),
     })),
+
+  loadSession: (snapshot) =>
+    set({
+      rollType: snapshot.rollType,
+      activeBuildIndex: snapshot.activeBuildIndex,
+      builds: snapshot.builds.map((b) => ({
+        countSuccesses: { ...b.countSuccesses },
+        keepAndSum: { ...b.keepAndSum },
+        straightSum: { ...b.straightSum },
+        result: null,
+        isComputing: false,
+      })),
+    }),
 }))
 
 // ─── Selectors / pure helpers ─────────────────────────────────────────────────
